@@ -10,10 +10,15 @@
 
 DATA_DIR="$HOME/.btcd/data"
 SNAPSHOT_DIR="$HOME/snapshots"
+THIS_SCRIPT=$0
+THIS_DIR=$(dirname ${THIS_SCRIPT})
+
 
 TODAY_DATE=$(date --iso-8601=date)
 
 TMP_DIR=$(mktemp -d --suffix=.${TODAY_DATE} --tmpdir=${SNAPSHOT_DIR})
+SHA_FILENAME="${TMP_DIR}/sha256sums.txt"
+
 
 
 check_today_doesnt_exist() {
@@ -47,10 +52,29 @@ sync_data_directory_to_today() {
     nice --10 rsync --progress --archive --delete "${DATA_DIR}/" "${TMP_DIR}"
 }
 
+make_sha256_checksums() {
+    cd "${TMP_DIR}"
+    FILES=$(find . -type f | sort)
+
+    sha256sum $FILES > "${SHA_FILENAME}"
+    cd -
+}
+
+sign_sha256_file() {
+    GPG_TEMP=$(mktemp -d)
+    export GNUPGHOME=${GPG_TEMP}
+    gpg --import "${THIS_DIR}/signing_key/public.asc"
+    gpg --import "${THIS_DIR}/signing_key/secret.asc"
+    gpg --yes --output "${SHA_FILENAME}.sig" --detach-sig "${SHA_FILENAME}"
+    rm -rf "${GPG_TEMP}"
+}
+
 move_temp_dir() {
     mv "${TMP_DIR}" "${TODAY_SNAPSHOT}"
-
 }
+
+
+
 
 check_today_doesnt_exist
 
@@ -61,4 +85,6 @@ else
 fi
 
 sync_data_directory_to_today
+make_sha256_checksums
+sign_sha256_file
 move_temp_dir
