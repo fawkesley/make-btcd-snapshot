@@ -73,7 +73,9 @@ move_temp_dir() {
     mv "${TMP_DIR}" "${TODAY_SNAPSHOT}"
 }
 
-
+change_permissions() {
+    chmod -R o+rx "${TODAY_SNAPSHOT}"
+}
 
 
 check_today_doesnt_exist
@@ -88,3 +90,4 @@ sync_data_directory_to_today
 make_sha256_checksums
 sign_sha256_file
 move_temp_dir
+change_permissions
